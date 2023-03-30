@@ -1,24 +1,11 @@
+"""Тестовая задача для Radium."""
 import asyncio
 import hashlib
 import os
+import sys
 import tempfile
-from asyncio import Task
 
 import aiohttp
-from aiohttp import ClientResponse
-
-"""1)Напишите скрипт, асинхронно, в 3 одновременных задачи, скачивающий 
-содержимое HEAD репозитория 
-https://gitea.radium.group/radium/project-configuration во временную папку."""
-
-"""2)После выполнения всех асинхронных задач скрипт должен 
-посчитать sha256 хэши от каждого файла."""
-
-"""3)Код должен проходить без замечаний проверку линтером 
-wemake-python-styleguide. Конфигурация nitpick - 
-https://gitea.radium.group/radium/project-configuration"""
-
-"""4)Обязательно 100% покрытие тестами"""
 
 ENDPOINT: str = 'https://gitea.radium.group/radium/project-configuration'
 
@@ -26,72 +13,82 @@ API_ENDPOINT: str = """
 https://gitea.radium.group/api/v1/repos/radium/project-configuration/contents/
 """
 
+CHUNK_SIZE, STREAMS_COUNT = 4096, 3
+
 
 async def download_file(
-        item: dict, session, sema, path: str = '') -> None:
-    """Скачивает файл по заданному пути"""
+    file_data: dict, session, sema: asyncio.Semaphore, path: str = '',
+):
+    """Скачивает файл по заданному пути."""
     async with sema:
-        file_url: str = f"{ENDPOINT}/raw/branch/master/{item.get('path')}"
-        file: ClientResponse = await session.get(file_url)
-        with open(f"{path}{item.get('name')}", 'wb') as f:
-            f.write(await file.content.read())
+        file_url: str = '{0}/raw/branch/master/{1}'.format(
+            ENDPOINT, file_data.get('path'),
+        )
+        response_raw_file = await session.get(file_url)
+        with open(
+            '{0}{1}'.format(path, file_data.get('name')),
+            'wb',
+        ) as binary_write_file:
+            binary_write_file.write(await response_raw_file.content.read())
 
 
-async def download_files(data: dict, session, path: str = '') -> None:
-    """Pекуpсивно ищет в ответе файлы и пеpедаёт на скачивание"""
-    tasks: list[Task] = []
-    for item in data:
-        if item.get('type') == 'file':
-            task: Task = asyncio.ensure_future(
-                download_file(item, session, semaphore, path)
+async def download_files(
+    catalog: dict, session, tasks, path: str = '',
+) -> None:
+    """Pекуpсивно ищет в ответе файлы и пеpедаёт на скачивание."""
+    for file_or_dir in catalog:
+        if file_or_dir.get('type') == 'file':
+            task = asyncio.ensure_future(
+                download_file(
+                    file_or_dir, session, semaphore, path,
+                ),
             )
             tasks.append(task)
         else:
-            path: str = item.get('path') + '/'
+            path: str = '{0}/'.format(file_or_dir.get('path'))
             temp_dir: str = ''.join((os.getcwd(), '/', path))
             if not os.path.exists(temp_dir):
                 os.mkdir(temp_dir)
-            response: ClientResponse = await session.get(API_ENDPOINT + path)
-            await download_files(await response.json(), session, path=path)
-    await asyncio.gather(*tasks)
+            response = await session.get(API_ENDPOINT + path)
+            await download_files(
+                await response.json(), session, tasks, path=path,
+            )
 
 
 async def get_hash(filename: str) -> str:
-    """Вычисление хэша одного файла"""
+    """Вычисление хэша одного файла."""
     hsh = hashlib.sha256()
-    with open(filename, 'rb') as file:
+    with open(filename, 'rb') as binary_read_file:
         while True:
-            chunk: bytes = file.read(4096)
+            chunk: bytes = binary_read_file.read(CHUNK_SIZE)
             if not chunk:
                 break
             hsh.update(chunk)
     return hsh.hexdigest()
 
 
-async def get_sha256_from_files() -> list[str]:
-    """Вычисления хэша всех файлов в директории"""
-    result: list[str] = []
+async def print_sha256_from_files() -> None:
+    """Вычисления хэша всех файлов в директории."""
     for dirpath, _, filenames in os.walk('.'):
         for filename in filenames:
             filepath: str = os.path.join(dirpath, filename)
             filehash: str = await get_hash(filepath)
-            result.append(f"{filename}: {filehash}")
-    return result
+            sys.stdout.write('{0}: {1}\n'.format(filename, filehash))
 
 
 async def main() -> None:
-    """Главная функция"""
+    """Главная функция."""
     temp_dir: str = tempfile.mkdtemp()
     async with aiohttp.ClientSession() as session:
-        response: ClientResponse = await session.get(API_ENDPOINT)
-        data: dict = await response.json()
+        response = await session.get(API_ENDPOINT)
+        response_json: dict = await response.json()
         os.chdir(temp_dir)
-        await download_files(data, session)
-
-    result: list[str] = await get_sha256_from_files()
-    print(*result, sep='\n')
+        tasks: list = []
+        await download_files(response_json, session, tasks)
+        await asyncio.gather(*tasks)
+    await print_sha256_from_files()
 
 
 if __name__ == '__main__':
-    semaphore = asyncio.Semaphore(3)
+    semaphore: asyncio.Semaphore = asyncio.Semaphore(STREAMS_COUNT)
     asyncio.run(main())
