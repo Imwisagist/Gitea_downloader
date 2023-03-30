@@ -1,8 +1,9 @@
+import asyncio
 import hashlib
 import os
 
-import requests
-from requests import Response
+import aiohttp
+from aiohttp import ClientResponse
 
 """1)Напишите скрипт, асинхронно, в 3 одновременных задачи, скачивающий содержимое
 HEAD репозитория https://gitea.radium.group/radium/project-configuration во временную папку."""
@@ -19,29 +20,29 @@ ENDPOINT: str = 'https://gitea.radium.group/radium/project-configuration'
 API_ENDPOIND = 'https://gitea.radium.group/api/v1/repos/radium/project-configuration/contents/'
 
 
-def download_file(item: dict, path: str = '') -> None:
+async def download_file(item: dict, session, path: str = '') -> None:
     """Скачивает файл по заданному пути"""
     file_url: str = f"{ENDPOINT}/raw/branch/master/{item.get('path')}"
-    file: Response = requests.get(file_url)
+    file: ClientResponse = await session.get(file_url)
     with open(f"{path}{item.get('name')}", 'wb') as f:
-        f.write(file.content)
+        f.write(await file.content.read())
 
 
-def get_all_files(data: dict, path: str = '') -> None:
+async def get_all_files(data: dict, session, path: str = '') -> None:
     """Pекуpсивно ищет в ответе файлы и пеpедаёт на скачивание"""
     for item in data:
         if item.get('type') == 'file':
-            download_file(item, path)
+            await download_file(item, session, path)
         else:
             path: str = item.get('path') + '/'
             temp_dir: str = ''.join((os.getcwd(), '/', path))
             if not os.path.exists(temp_dir):
                 os.mkdir(temp_dir)
-            response: Response = requests.get(API_ENDPOIND + path)
-            get_all_files(response.json(), path=path)
+            response: ClientResponse = await session.get(API_ENDPOIND + path)
+            await get_all_files(await response.json(), session, path=path)
 
 
-def get_hash(filename: str) -> str:
+async def get_hash(filename: str) -> str:
     """Вычисление хэша одного файла"""
     hsh = hashlib.sha256()
     with open(filename, 'rb') as file:
@@ -53,31 +54,32 @@ def get_hash(filename: str) -> str:
     return hsh.hexdigest()
 
 
-def get_sha256_from_all_files() -> list[str]:
+async def get_sha256_from_all_files() -> list[str]:
     """Вычисления хэша всех файлов в директории"""
     result: list = []
     for dirpath, _, filenames in os.walk('.'):
         for filename in filenames:
             filepath: str = os.path.join(dirpath, filename)
-            filehash: str = get_hash(filepath)
+            filehash: str = await get_hash(filepath)
             result.append(f"{filename}: {filehash}")
     return result
 
 
-def main() -> None:
+async def main() -> None:
     """Главная функция"""
-    response: Response = requests.get(API_ENDPOIND)
-    data: dict = response.json()
+    async with aiohttp.ClientSession() as session:
+        response: ClientResponse = await session.get(API_ENDPOIND)
+        data: dict = await response.json()
 
-    temp_dir: str = ''.join((os.getcwd(), '/downloads/'))
-    if not os.path.exists(temp_dir):
-        os.mkdir(temp_dir)
+        temp_dir: str = ''.join((os.getcwd(), '/downloads/'))
+        if not os.path.exists(temp_dir):
+            os.mkdir(temp_dir)
 
-    os.chdir(temp_dir)
-    get_all_files(data)
-
-    print(*get_sha256_from_all_files(), sep='\n')
+        os.chdir(temp_dir)
+        await get_all_files(data, session)
+        result: list[str] = await get_sha256_from_all_files()
+        print(*result, sep='\n')
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
