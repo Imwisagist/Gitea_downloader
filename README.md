@@ -10,4 +10,4 @@ https://gitea.radium.group/radium/project-configurationв
 wemake-python-styleguide. Конфигурация nitpick -
 https://gitea.radium.group/radium/project-configuration"""
 
-Тесты в пpоцессе написания
+Тесты написаны
