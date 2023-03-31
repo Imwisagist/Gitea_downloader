@@ -1,4 +1,6 @@
 # Radium
+[![Actions Status](https://github.com/Imwisagist/Radium/actions/workflows/radium_ci.yml/badge.svg)](https://github.com/Imwisagist/Radium/actions/workflows/radium_ci.yml)
+
 Асинхpонный скрипт, скачивающий HEAD содержимое репозитория
 https://gitea.radium.group/radium/project-configurationв
 во временную папку 3 одновременных потока.
