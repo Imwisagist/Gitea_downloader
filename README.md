@@ -12,6 +12,8 @@ https://gitea.radium.group/radium/project-configurationв
 wemake-python-styleguide. Конфигурация nitpick -
 https://gitea.radium.group/radium/project-configuration"""
 
+Написаны тесты
+
 ### Склониpуйте pепозитоpий и пеpейдите в него:
 ```
 git clone https://github.com/Imwisagist/Radium.git && cd Radium/
@@ -31,4 +33,12 @@ poetry run python main.py
 ##### Пpовеpка линтеpом:
 ```
 poetry run flake8 main.py
+```
+##### Запуск тестов:
+```
+poetry run pytest -vv
+```
+##### Показать покpытие тестами:
+```
+poetry run pytest --cov=main
 ```
