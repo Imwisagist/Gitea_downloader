@@ -2,12 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-# nitpick
-nitpick/
-.editorconfig
-pyproject.toml
-setup.cfg
-CHANGELOG.md
+
 # C extensions
 *.so
 .idea/

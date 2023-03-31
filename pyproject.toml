@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "radium"
+version = "0.1.0"
+description = "Cкpипт в 3 потока скачивает содеpжимое удалённого gitea pепозитоpия, сохpаняет файлы во вpеменную папку и считает хэш каждого файла."
+authors = ["Дмитрий Спиряев <imwisagist@yandex.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aiohttp = "^3.8.4"
+nitpick = "^0.33.0"
+wemake-python-styleguide = "^0.17.0"
+
+[tool.nitpick]
+style = [
+  "https://gitea.radium.group/radium/project-configuration/raw/branch/master/nitpick/all.toml",
+  "https://gitea.radium.group/radium/project-configuration/raw/branch/master/nitpick/darglint.toml",
+  "https://gitea.radium.group/radium/project-configuration/raw/branch/master/nitpick/editorconfig.toml",
+  "https://gitea.radium.group/radium/project-configuration/raw/branch/master/nitpick/file-structure.toml",
+  "https://gitea.radium.group/radium/project-configuration/raw/branch/master/nitpick/flake8.toml",
+  "https://gitea.radium.group/radium/project-configuration/raw/branch/master/nitpick/isort.toml",
+  "https://gitea.radium.group/radium/project-configuration/raw/branch/master/nitpick/pytest.toml",
+  "https://gitea.radium.group/radium/project-configuration/raw/branch/master/nitpick/styleguide.toml",
+]
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+use_parentheses = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
