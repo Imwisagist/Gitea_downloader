@@ -7,6 +7,7 @@ import asyncio
 import hashlib
 import os
 import tempfile
+from pathlib import Path
 
 import aiohttp
 
@@ -55,11 +56,9 @@ async def parse_catalog(
                 download_file(file_or_dir, session, path),
             )
             tasks.append(task)
-        else:
+        elif file_or_dir.get('type') == 'dir':
             path: str = '{0}/'.format(file_or_dir.get('path'))
-            new_dir: str = ''.join((os.getcwd(), '/', path))
-            if not os.path.exists(new_dir):
-                os.mkdir(new_dir)
+            os.mkdir(''.join((os.getcwd(), '/', path)))
             new_response = await get_response(
                 session, cfg.API_ENDPOINT + path,
             )
@@ -78,7 +77,7 @@ async def download_files() -> None:
         await asyncio.gather(*tasks)
 
 
-async def get_hash(filename: str) -> str:
+async def get_hash(filename: str | Path) -> str:
     """Вычисляет хэш для одного файла и пишет в логер."""
     hsh = hashlib.sha256()
     try:
