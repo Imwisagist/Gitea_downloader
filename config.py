@@ -24,7 +24,6 @@ def get_logger(logger_name: str, logfile_name: str = '') -> logging.Logger:
     stream_handler.setFormatter(stream_formatter)
     stream_handler.addFilter(logging.Filter(logger_name))
     logger.addHandler(stream_handler)
-    sys.stderr = ''
 
     if logfile_name:
         logs_dir_path: str = ''.join((os.path.dirname(os.getcwd()), '/logs'))

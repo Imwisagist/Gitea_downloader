@@ -1,14 +1,12 @@
 """Тесты функций для скачивания файлов."""
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import pytest
 from aiohttp import ClientSession
 
 from main import (
-    get_response,
     download_file,
-    download_files,
-    parse_catalog,
 )
 
 
@@ -19,3 +17,5 @@ async def test_download_files_from_gitea_repository(
 ):
     ClientSession.get = fake_session.get
     directory = tmp_path / Path('new_dir')
+
+# Ушёл изучать документацию чтобы дописать

@@ -79,7 +79,7 @@ async def download_files() -> None:
 
 
 async def get_hash(filename: str) -> str:
-    """Вычисление хэша одного файла."""
+    """Вычисляет хэш для одного файла и пишет в логер."""
     hsh = hashlib.sha256()
     try:
         with open(filename, 'rb') as binary_read_file:
@@ -88,30 +88,31 @@ async def get_hash(filename: str) -> str:
                 if not chunk:
                     break
                 hsh.update(chunk)
+            return hsh.hexdigest()
     except FileNotFoundError as error:
         raise FileNotFoundError('Файл не найден', error)
-    return hsh.hexdigest()
 
 
 async def print_sha256_from_files() -> None:
-    """Вычисления хэша всех файлов в директории."""
+    """Передаёт все файлы на вычисление хэша."""
     for dirpath, _, filenames in os.walk('.'):
         for filename in filenames:
             filepath: str = os.path.join(dirpath, filename)
-            message = 'Хэш файла {0}: {1}'.format(
-                filename, await get_hash(filepath),
-            )
-            logger.info(message)
+            logger.info('Хэш файла {0}: {1}'.format(
+                filepath[2:], await get_hash(filepath),
+            ))
 
 
 async def main() -> None:
     """Главная функция."""
     logger.info('Скачивание файлов..')
     with tempfile.TemporaryDirectory() as temp_dir:
+        old_cwd: str = os.getcwd()
         os.chdir(temp_dir)
         await download_files()
         logger.info('Вычисление хэша...')
         await print_sha256_from_files()
+        os.chdir(old_cwd)
 
 
 if __name__ == '__main__':
