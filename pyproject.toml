@@ -6,13 +6,39 @@ authors = ["Дмитрий Спиряев <imwisagist@yandex.ru>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.9"
 aiohttp = "^3.8.4"
 nitpick = "^0.33.0"
 wemake-python-styleguide = "^0.17.0"
 pytest = "^7.2.2"
 pytest-asyncio = "^0.21.0"
 pytest-coverage = "^0.0"
+aiofiles = "^23.1.0"
+
+[tool.pytest.ini_options]
+testpaths = [ "tests",]
+python_files = "test*.py"
+addopts = "-rsxX -l --tb=short --strict-markers --doctest-modules"
+xfail_strict = "true"
+
+[tool.poetry.group.dev.dependencies]
+wemake-python-styleguide = "^0.17.0"
+flake8-pytest-style = "^1.3.0"
+flake8-SQL = "^0.4.1"
+flake8-annotations = "^2.4.1"
+flake8-logging-format = "^0.8.1"
+flake8-spellcheck = "^0.28.0"
+isort = "^5.7.0"
+pytest = "^7.2.0"
+pytest-cov = "^4.0.0"
+pytest-sugar = "^0.9.5"
+Faker = "^15.1.0"
+pytest-snapshot = "^0.9.0"
+
+[tool.poetry.group.dev.dependencies.pytest-xdist]
+extras = [ "psutil",]
+version = "^3.0.2"
+
 
 [tool.nitpick]
 style = [

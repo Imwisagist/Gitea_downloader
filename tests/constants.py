@@ -1,7 +1,18 @@
 """Тестовые данные."""
 
-HASH1 = '7de399840d99f97e59d2df18beacf81c1df68bef660cad1cf171a6100fb58fca'
-HASH2 = 'c789f12267dd6baa3e9d9ca9a20c573ec9699890cc24557d7d367da50f0b6d5e'
+EXPECTED_HASH = '7de399840d99f97e59d2df18beacf81c1df68bef660cad1cf171a6100fb58fca'
+
+REAL_FILE = {
+    'name': 'LICENSE',
+    'path': 'LICENSE',
+    'type': 'file',
+}
+
+FAKE_DIR = {
+    'type': 'dir',
+    'path': 'nitpick',
+}
+
 
 FAKE_FILE_1 = {
     'content': 'fake_content_1',
