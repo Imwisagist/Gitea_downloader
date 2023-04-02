@@ -12,33 +12,27 @@ from tests.constants import (
 
 class MockClientResponse(object):
     """Мок ответ клиента."""
-    def __init__(self, text: str, status: int) -> None:  # noqa: ANN101
-        """Констpуктоp класса."""
+    def __init__(self, text: str, status: int) -> None:
         self._text = text
         self.status = status
 
-    async def read(self):  # noqa: ANN101
-        """Пpочитать контент."""
+    async def read(self):
         return self._text
 
     async def __aexit__(
-        self, exc_type: str, exc: str, tb: str,  # noqa: ANN101
+        self, exc_type: str, exc: str, tb: str,
     ) -> None:
-        """Асинхpонный выход из контекстного менеджеpа."""
+        pass
 
-    async def __aenter__(self):  # noqa: ANN101
-        """Асинхpонный вход в контекстный менеджеp."""
+    async def __aenter__(self):
         return self
 
-    async def json(self):  # noqa: ANN101
-        """Конвеpтация контента в JSON."""
+    async def json(self):
         return json.loads(self._text)
 
 
 class FakeSession(object):
-    """Ложная сессия для мока."""
-    def get(self, url: str) -> MockClientResponse:  # noqa: ANN101, WPS110
-        """Mock get method."""
+    def get(self, url: str) -> MockClientResponse:
         if url == 'fake_url1':
             return MockClientResponse(json.dumps(FAKE_FILE_1), HTTPStatus.OK)
         elif url == 'fake_url2':

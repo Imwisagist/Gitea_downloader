@@ -34,7 +34,10 @@ async def get_response(
 
 
 async def download_file(
-    file_data: dict, session: aiohttp.ClientSession, path: str = '',
+    file_data: dict,
+    session: aiohttp.ClientSession,
+    tmp_dir: str,
+    path: str = '',
 ) -> None:
     """Скачивает файл по заданному пути."""
     async with asyncio.Semaphore(3):
@@ -42,19 +45,19 @@ async def download_file(
             ENDPOINT, file_data.get('path'),
         )
         response_raw_file = await get_response(session, file_url)
-        try:
-            with open(
-                '{0}{1}'.format(path, file_data.get('name')), 'wb',
-            ) as binary_write_file:
-                binary_write_file.write(await response_raw_file.content.read())
-        except Exception as error:
-            raise OSError('Не удалось записать файл, ошибка:{0}'.format(error))
+        with open(
+            '{0}{1}'.format(
+                '{0}/{1}'.format(tmp_dir, path), file_data.get('name'),
+            ), 'wb',
+        ) as binary_write_file:
+            binary_write_file.write(await response_raw_file.content.read())
 
 
 async def parse_catalog(
     catalog: list | dict,
     session: aiohttp.ClientSession,
     tasks: list,
+    tmp_dir: str,
     path: str = '',
 ) -> None:
     """Паpсит каталоги на наличие файлов, файлы пеpедаёт на скачивание."""
@@ -63,31 +66,33 @@ async def parse_catalog(
             raise KeyError('Не валидный ответ, отсутствует ключ type')
         if file_or_dir.get('type') == 'file':
             task = asyncio.create_task(
-                download_file(file_or_dir, session, path),
+                download_file(file_or_dir, session, tmp_dir, path),
             )
             tasks.append(task)
         elif file_or_dir.get('type') == 'dir':
-            path: str = '{0}/'.format(file_or_dir.get('path'))
-            os.mkdir(''.join((os.getcwd(), '/', path)))
+            path: str = '/{0}/'.format(file_or_dir.get('path'))
+            os.mkdir(''.join((tmp_dir, '/', path)))
             new_response = await get_response(
                 session, API_ENDPOINT + path,
             )
             await parse_catalog(
-                await new_response.json(), session, tasks, path,
+                await new_response.json(), session, tasks, tmp_dir, path,
             )
 
 
-async def download_files() -> None:
+async def download_files(tmp_dir: str) -> None:
     """Cоздаёт сессию и скачивает все файлы."""
+    if not Path(tmp_dir).exists():
+        raise NotADirectoryError('Директория не найдена')
     async with aiohttp.ClientSession() as session:
         response = await get_response(session, API_ENDPOINT)
         response_json: dict = await response.json()
         tasks: list = []
-        await parse_catalog(response_json, session, tasks)
+        await parse_catalog(response_json, session, tasks, tmp_dir)
         await asyncio.gather(*tasks)
 
 
-async def get_hash(filename: str | Path) -> str:
+async def get_hash(filename: str) -> str:
     """Вычисляет хэш для одного файла и пишет в логер."""
     hsh = hashlib.sha256()
     chunk_size: int = 4096
@@ -103,27 +108,26 @@ async def get_hash(filename: str | Path) -> str:
         raise FileNotFoundError('Файл не найден', error)
 
 
-async def print_sha256_from_files() -> None:
+async def print_downloaded_files_hash(tmp_dir: str) -> None:
     """Передаёт все файлы на вычисление хэша."""
-    for dirpath, _, filenames in os.walk('.'):
+    if not Path(tmp_dir).exists():
+        raise NotADirectoryError('Директория не найдена')
+    for dirpath, _, filenames in os.walk(tmp_dir):
         for filename in filenames:
             filepath: str = os.path.join(dirpath, filename)
             sys.stdout.write('Хэш файла {0}: {1}\n'.format(
-                filepath[2:], await get_hash(filepath),
+                filename, await get_hash(filepath),
             ))
 
 
 async def main() -> None:
     """Главная функция."""
-    sys.stdout.write('Скачивание файлов...\n')
     with tempfile.TemporaryDirectory() as temp_dir:
-        old_cwd: str = os.getcwd()
-        os.chdir(temp_dir)
-        await download_files()
+        sys.stdout.write('Скачивание файлов...\n')
+        await download_files(temp_dir)
         sys.stdout.write('Вычисление хэша...\n')
-        await print_sha256_from_files()
-        os.chdir(old_cwd)
+        await print_downloaded_files_hash(temp_dir)
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    asyncio.run(main())   # pragma: no cover

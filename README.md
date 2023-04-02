@@ -40,5 +40,5 @@ poetry run pytest -vv
 ```
 ##### Показать покpытие тестами:
 ```
-poetry run pytest --cov=main
+poetry run pytest --cov-report term-missing --cov=gitea_downloader --cov-report xml
 ```
