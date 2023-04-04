@@ -4,20 +4,11 @@ from pathlib import Path
 import pytest
 from aiohttp import ClientResponse
 
-from custom_exceptions import DirectoryNotFound
-from main import (
-    download_file, get_response, download_files, parse_catalog,
-    print_downloaded_files_hash, print_hash, main,
-)
+from main import download_file, get_response, parse_catalog, print_hash, main
 from tests.constants import REAL_FILE, FAKE_FILE_1, FAKE_DIR, EXPECTED_HASH
 
 
 class TestsDownload:
-    @pytest.mark.asyncio()
-    async def test_download_files_works(self, tmp_path: callable) -> None:
-        await download_files(tmp_path)
-        assert len(list(tmp_path.rglob('*'))) == 11
-
     @pytest.mark.asyncio()
     async def test_get_not_successful_response_status_code(self, real_session: callable) -> None:
         with pytest.raises(ConnectionError):
@@ -49,11 +40,6 @@ class TestsDownload:
         await parse_catalog([FAKE_DIR], real_session, [], tmp_path)
         assert len(list(tmp_path.rglob('*'))) == 1
 
-    @pytest.mark.asyncio()
-    async def test_download_files_fake_path_call_raise(self) -> None:
-        with pytest.raises(DirectoryNotFound):
-            await download_files(Path('GO://gym'))
-
 
 class TestsHash:
     @pytest.mark.asyncio()
@@ -65,17 +51,6 @@ class TestsHash:
     async def test_get_hash_fake_path_call_raise(self) -> None:
         with pytest.raises(FileNotFoundError):
             await print_hash(Path('G://file.gym'))
-
-    @pytest.mark.asyncio()
-    async def test_print_sha256_from_files(self, capsys: callable, temp_file: callable) -> None:
-        file: Path = temp_file
-        await print_downloaded_files_hash(file.parent)
-        assert 'test1.txt hash: 7de399840d99f97e59d2df18beacf81c1df68bef660cad1cf171a6100fb58fca\n' in capsys.readouterr().out
-
-    @pytest.mark.asyncio()
-    async def test_print_hash_fake_path_call_raise(self) -> None:
-        with pytest.raises(DirectoryNotFound):
-            await print_downloaded_files_hash(Path('GO://gym'))
 
 
 class TestsMain:
