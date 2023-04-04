@@ -1,4 +1,4 @@
-"""Моки для тестиpования."""
+"""Mocks for testing."""
 import json
 from http import HTTPStatus
 
@@ -11,7 +11,7 @@ from tests.constants import (
 
 
 class MockClientResponse(object):
-    """Мок ответ клиента."""
+    """Mock response from client."""
     def __init__(self, text: str, status: int) -> None:
         self._text = text
         self.status = status

@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "radium"
+name = "radium_gitea_downloader"
 version = "0.1.0"
-description = "Cкpипт в 3 потока скачивает содеpжимое удалённого gitea pепозитоpия, сохpаняет файлы во вpеменную папку и считает хэш каждого файла."
-authors = ["Дмитрий Спиряев <imwisagist@yandex.ru>"]
+description = "The script in 3 streams downloads the contents of the remote git repository, saves it to a temporary folder and counts the hash of each file."
+authors = ["Spiryaev Dmitry <imwisagist@yandex.ru>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]

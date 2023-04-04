@@ -1,7 +1,7 @@
-"""Конфигуpационный файл для pytest."""
+"""Configuration file for pytest."""
 from pathlib import Path
 
-import aiohttp
+from aiohttp import ClientSession
 import pytest_asyncio
 
 from tests.mocks import FakeSession
@@ -9,20 +9,20 @@ from tests.mocks import FakeSession
 
 @pytest_asyncio.fixture()
 async def fake_session() -> FakeSession:
-    """Создание поддельной сессии."""
+    """Creating a fake session."""
     return FakeSession()
 
 
 @pytest_asyncio.fixture()
 async def temp_file(tmp_path: callable) -> Path:
-    """Создание временного файла."""
+    """Creating a temporary file."""
     test_file: Path = tmp_path / 'test1.txt'
     test_file.write_text('test_content1')
     return test_file
 
 
 @pytest_asyncio.fixture()
-async def real_session() -> aiohttp.ClientSession:
-    """Настоящая сессия."""
-    async with aiohttp.ClientSession() as session:
+async def real_session() -> ClientSession:
+    """Creating a real session."""
+    async with ClientSession() as session:
         yield session

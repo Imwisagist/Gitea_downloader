@@ -11,4 +11,5 @@ tests:
 	poetry run pytest -vv
 
 coverage:
-	poetry run pytest --cov-report term-missing --cov=gitea_downloader --cov-report xml
+	poetry run pytest --cov-report term-missing --cov=main --cov-report xml
+

@@ -18,3 +18,4 @@ jobs:
         run: make linter
       - name: run tests
         run: make tests
+

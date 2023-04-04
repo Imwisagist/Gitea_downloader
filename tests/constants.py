@@ -1,4 +1,4 @@
-"""Тестовые данные."""
+"""Test data."""
 
 EXPECTED_HASH = '7de399840d99f97e59d2df18beacf81c1df68bef660cad1cf171a6100fb58fca'
 

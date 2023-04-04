@@ -1,133 +1,123 @@
-"""Тестовая задача для Radium.
+"""Test task for Radium.
 
-Скpипт в 3 потока скачивает содеpжимое удалённого gitea pепозитоpия,
-сохpаняет во вpеменную папку и считает хэш каждого файла.
+The script in 3 streams downloads the contents of the remote git repository,
+saves it to a temporary folder and counts the hash of each file.
 """
-import asyncio
-import hashlib
-import os
 import sys
-import tempfile
+from asyncio import Semaphore, create_task, gather, run
+from hashlib import sha256
 from http import HTTPStatus
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
-import aiofiles
-import aiohttp
+from aiofiles import open as aio_open
+from aiohttp import ClientResponse, ClientSession
 
-ENDPOINT: str = 'https://gitea.radium.group/radium/project-configuration'
+from custom_exceptions import DirectoryNotFound
+
+REPO_ENDPOINT: str = 'https://gitea.radium.group/radium/project-configuration'
 API_ENDPOINT: str = (
     'https://gitea.radium.group/api/v1/repos/radium/' +
     'project-configuration/contents/'
 )
 
 
-async def get_response(
-    session: aiohttp.ClientSession, url: str,
-) -> aiohttp.ClientResponse:
-    """Запрашивает данные с заданного адреса методом GET."""
-    response: aiohttp.ClientResponse = await session.get(url)
+async def get_response(session: ClientSession, url: str) -> ClientResponse:
+    """Request data from the specified address using the GET method."""
+    response: ClientResponse = await session.get(url)
     if response.status != HTTPStatus.OK:
         raise ConnectionError(
-            'Не успешный код ответа: {0}'.format(response.status),
+            'Unsuccessful response code: {0}'.format(response.status),
         )
     return response
 
 
 async def download_file(
-    file_data: dict,
-    session: aiohttp.ClientSession,
-    tmp_dir: str,
-    path: str = '',
+    file_data: dict, session: ClientSession, path: Path,
 ) -> None:
-    """Скачивает файл по заданному пути."""
-    async with asyncio.Semaphore(3):
+    """Download file for by the specified path."""
+    async with Semaphore(3):
         file_url: str = '{0}/raw/branch/master/{1}'.format(
-            ENDPOINT, file_data.get('path'),
+            REPO_ENDPOINT, file_data.get('path'),
         )
-        response_raw_file = await get_response(session, file_url)
-        with open(
-            '{0}{1}'.format(
-                '{0}/{1}'.format(tmp_dir, path), file_data.get('name'),
-            ), 'wb',
-        ) as binary_write_file:
-            binary_write_file.write(await response_raw_file.content.read())
+        raw_file: ClientResponse = await get_response(session, file_url)
+        async with aio_open(path / file_data.get('name'), 'wb') as b_file:
+            await b_file.write(await raw_file.content.read())
 
 
 async def parse_catalog(
-    catalog: list | dict,
-    session: aiohttp.ClientSession,
-    tasks: list,
-    tmp_dir: str,
-    path: str = '',
+    catalog: list | dict, session: ClientSession, tasks: list, path: Path,
 ) -> None:
-    """Паpсит каталоги на наличие файлов, файлы пеpедаёт на скачивание."""
+    """Parse directories for files, transfers files for download."""
     for file_or_dir in catalog:
         if not file_or_dir.get('type'):
-            raise KeyError('Не валидный ответ, отсутствует ключ type')
+            raise KeyError('Not valid response, key "type" not found')
+
         if file_or_dir.get('type') == 'file':
-            task = asyncio.create_task(
-                download_file(file_or_dir, session, tmp_dir, path),
-            )
+            task = create_task(download_file(file_or_dir, session, path))
             tasks.append(task)
+
         elif file_or_dir.get('type') == 'dir':
-            path: str = '/{0}/'.format(file_or_dir.get('path'))
-            os.mkdir(''.join((tmp_dir, '/', path)))
-            new_response = await get_response(
-                session, API_ENDPOINT + path,
+            path: Path = path / file_or_dir.get('path')
+            Path.mkdir(path)
+            new_response: ClientResponse = await get_response(
+                session, API_ENDPOINT + path.name,
             )
             await parse_catalog(
-                await new_response.json(), session, tasks, tmp_dir, path,
+                await new_response.json(), session, tasks, path,
             )
 
 
-async def download_files(tmp_dir: str) -> None:
-    """Cоздаёт сессию и скачивает все файлы."""
-    if not Path(tmp_dir).exists():
-        raise NotADirectoryError('Директория не найдена')
-    async with aiohttp.ClientSession() as session:
-        response = await get_response(session, API_ENDPOINT)
+async def download_files(path: Path) -> None:
+    """Create a session and downloads all files."""
+    if not path.exists():
+        raise DirectoryNotFound('Temp directory not found!')
+
+    async with ClientSession() as session:
+        response: ClientResponse = await get_response(session, API_ENDPOINT)
         response_json: dict = await response.json()
         tasks: list = []
-        await parse_catalog(response_json, session, tasks, tmp_dir)
-        await asyncio.gather(*tasks)
+        await parse_catalog(response_json, session, tasks, path)
+        await gather(*tasks)
 
 
-async def get_hash(filename: str) -> str:
-    """Вычисляет хэш для одного файла и пишет в логер."""
-    hsh = hashlib.sha256()
+async def print_hash(file_path: Path) -> None:
+    """Print calculated hash for one file."""
+    if not file_path.exists():
+        raise FileNotFoundError('File not Found')
+
+    hsh = sha256()
     chunk_size: int = 4096
-    try:
-        async with aiofiles.open(filename, 'rb') as binary_read_file:
-            while True:
-                chunk: bytes = await binary_read_file.read(chunk_size)
-                if not chunk:
-                    break
-                hsh.update(chunk)
-            return hsh.hexdigest()
-    except FileNotFoundError as error:
-        raise FileNotFoundError('Файл не найден', error)
+    async with aio_open(file_path, 'rb') as binary_read_file:
+        while True:
+            chunk: bytes = await binary_read_file.read(chunk_size)
+            if not chunk:
+                break
+            hsh.update(chunk)
+        sys.stdout.write(
+            '{0} hash: {1}\n'.format(file_path.name, hsh.hexdigest()),
+        )
 
 
-async def print_downloaded_files_hash(tmp_dir: str) -> None:
-    """Передаёт все файлы на вычисление хэша."""
-    if not Path(tmp_dir).exists():
-        raise NotADirectoryError('Директория не найдена')
-    for dirpath, _, filenames in os.walk(tmp_dir):
-        for filename in filenames:
-            filepath: str = os.path.join(dirpath, filename)
-            sys.stdout.write('Хэш файла {0}: {1}\n'.format(
-                filename, await get_hash(filepath),
-            ))
+async def print_downloaded_files_hash(path: Path) -> None:
+    """Create hash sum calculation tasks and runs them for execution."""
+    if not path.exists():
+        raise DirectoryNotFound('Temp directory not found!')
+
+    file_paths = (el for el in path.rglob('*') if el.is_file())
+    tasks = (create_task(print_hash(file_path)) for file_path in file_paths)
+    await gather(*tasks)
 
 
 async def main() -> None:
-    """Главная функция."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        sys.stdout.write('Скачивание файлов...\n')
-        await download_files(temp_dir)
-        sys.stdout.write('Вычисление хэша...\n')
-        await print_downloaded_files_hash(temp_dir)
+    """Start main function."""
+    with TemporaryDirectory() as temp_dir:
+        path: Path = Path(temp_dir)
+        sys.stdout.write('Downloading files...\n')
+        await download_files(path)
+        sys.stdout.write('Calculation hash...\n')
+        await print_downloaded_files_hash(path)
 
 
 if __name__ == '__main__':
-    asyncio.run(main())   # pragma: no cover
+    run(main())   # pragma: no cover
