@@ -44,13 +44,13 @@ class TestsDownload:
 class TestsHash:
     @pytest.mark.asyncio()
     async def test_correct_calculate_hashes(self, temp_file: callable, capsys: callable) -> None:
-        await print_hash(temp_file)
+        print_hash(temp_file)
         assert EXPECTED_HASH in capsys.readouterr().out, "Хэш не совпадает"
 
     @pytest.mark.asyncio()
     async def test_get_hash_fake_path_call_raise(self) -> None:
         with pytest.raises(FileNotFoundError):
-            await print_hash(Path('G://file.gym'))
+            print_hash(Path('G://file.gym'))
 
 
 class TestsMain:
