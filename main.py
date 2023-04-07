@@ -4,6 +4,7 @@ The script in 3 streams downloads the contents of the remote git repository,
 saves it to a temporary folder and counts the hash of each file.
 """
 import sys
+import threading
 from asyncio import Semaphore, gather, run
 from hashlib import sha256
 from http import HTTPStatus
@@ -46,16 +47,16 @@ async def download_file(
             return file_path
 
 
-async def print_hash(file_path: Path) -> None:
+def print_hash(file_path: Path) -> None:
     """Print calculated hash for one file."""
     if not file_path.exists():
         raise FileNotFoundError('File not Found')
 
     hsh = sha256()
     chunk_size: int = 4096
-    async with aiofile_open(file_path, 'rb') as binary_read_file:
+    with open(file_path, 'rb') as binary_read_file:
         while True:
-            chunk: bytes = await binary_read_file.read(chunk_size)
+            chunk: bytes = binary_read_file.read(chunk_size)
             if not chunk:
                 break
             hsh.update(chunk)
@@ -66,7 +67,8 @@ async def print_hash(file_path: Path) -> None:
 
 async def callback(future: Coroutine[Any, Any, Path]) -> None:
     """Done callback for downloaded files."""
-    await print_hash(await future)
+    with threading.Semaphore(3):
+        threading.Thread(print_hash(await future))
 
 
 async def parse_catalog(
