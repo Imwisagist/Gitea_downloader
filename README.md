@@ -1,4 +1,4 @@
-# Radium
+# Gitea_downloader
 [![Actions Status](https://github.com/Imwisagist/Radium/actions/workflows/radium_ci.yml/badge.svg)](https://github.com/Imwisagist/Radium/actions/workflows/radium_ci.yml)
 
 Asynchronous script that downloads the HEAD contents of the repository
